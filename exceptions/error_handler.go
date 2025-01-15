@@ -23,7 +23,7 @@ func HandleError(c *fiber.Ctx, err error) error {
 	if errors.As(err, &e) {
 		globalResponse.Message = e.Message
 		globalResponse.Errors = nil
-		c.Status(e.Code).JSON(&globalResponse)
+		return c.Status(e.Code).JSON(&globalResponse)
 	}
 
 	return baseError(c, err.(GlobalError))
