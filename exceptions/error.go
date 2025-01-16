@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
+
 	"github.com/go-playground/validator"
 )
 
@@ -108,16 +110,9 @@ func NewFailedValidation(obj interface{}, err validator.ValidationErrors) Failed
 	errors := make(map[string]interface{})
 
 	for _, fieldError := range err {
-		fieldName := fieldError.Field()
-
-		if f, ok := objRef.Elem().FieldByName(fieldName); ok {
-			jsonTag := f.Tag.Get("json")
-			if jsonTag != "" {
-				fieldName = jsonTag
-			}
-		}
-
-		errors[fieldName] = fmt.Sprintf("%s", fieldError.Tag())
+		fieldName, _ := objRef.FieldByName(fieldError.Field())
+		field := fieldName.Tag.Get("json")
+		errors[field] = handleValidationErrorMessage(fieldError.Tag(), fieldError.Param(), field)
 	}
 
 	return FailedValidation{Msg: "Failed Validation", Code: http.StatusUnprocessableEntity, Errors: errors}
@@ -130,3 +125,21 @@ func (e FailedValidation) Error() string {
 func (e FailedValidation) GetCode() int {
 	return e.Code
 }
+
+func handleValidationErrorMessage(tag string, param string,field string) string {
+	var msg string
+	field = strings.Replace(field, "_", " ", -1)
+	
+	switch tag {
+	case "required":
+		msg = fmt.Sprintf("The %s field is required", field)
+	case "email":
+		msg = "This is not valid email"
+	case "min": 
+		msg = fmt.Sprintf("The %s field min value %s", tag, param)
+	case "max":
+		msg = fmt.Sprintf("The %s field max value %s", tag, param)
+	}
+
+	return msg
+} 
